@@ -1,19 +1,19 @@
 ###############################################################################
-# DfaR - ANALISI DELLA FLUCTUATING ASYMMETRY (FA) DENTALE
+# DfaR - DENTAL FLUCTUATING ASYMMETRY (FA) ANALYSIS
 #
-# Uso:
-# 1. Aprire questo file in RStudio.
-# 2. Premere "Run App".
-# 3. Caricare il file Excel originale.
-# 4. Premere "Esegui analisi FA".
-# 5. Controllare i risultati.
-# 6. Scaricare il file Excel finale.
+# Use:
+# 1. Open this file in RStudio.
+# 2. Click "Run App".
+# 3. Upload the original Excel file.
+# 4. Click "Prepare data".
+# 5. Check the results.
+# 6. Download the final Excel file.
 #
-# L'app NON modifica il file originale.
+# The app NEVER modifies the original file.
 ###############################################################################
 
 # ---------------------------------------------------------------------------
-# 0. PACCHETTI
+# 0. PACKAGES
 # ---------------------------------------------------------------------------
 
 library(shiny)
@@ -26,8 +26,9 @@ library(DT)
 library(ggplot2)
 library(scales)
 
+
 # ---------------------------------------------------------------------------
-# 1. FUNZIONI DI SERVIZIO
+# 1. HELPER FUNCTIONS
 # ---------------------------------------------------------------------------
 
 primo_non_NA <- function(x) {
@@ -182,7 +183,7 @@ grubbs_holm_iterativo <- function(
     iterazione <- iterazione + 1
 
     if (iterazione > 50) {
-      stop("La procedura Grubbs ha superato 50 iterazioni.")
+      stop("The Grubbs procedure exceeded 50 iterations.")
     }
   }
 
@@ -574,8 +575,8 @@ anova_FA_singolo_tratto <- function(d) {
 # FUNZIONI AGGIUNTIVE PER LE ANALISI BIOLOGICHE
 # ---------------------------------------------------------------------------
 
-# Converte codifiche comuni di presenza/assenza in 0/1.
-# Lascia NA quando il valore non è interpretabile.
+# Converts common presence/absence codings to 0/1.
+# Leaves NA when the value cannot be interpreted.
 a_binario <- function(x) {
 
   z <- trimws(tolower(as.character(x)))
@@ -627,15 +628,15 @@ etichetta_presenza <- function(x) {
 }
 
 
-# Analisi automatica per una variabile numerica Y.
+# Automatic analysis for a numeric response Y.
 #
-# Se X è numerica:
+# If X is numeric:
 #   Spearman.
 #
-# Se X è categoriale con 2 gruppi:
+# If X is categorical with 2 groups:
 #   Wilcoxon rank-sum.
 #
-# Se X è categoriale con >2 gruppi:
+# If X is categorical with >2 groups:
 #   Kruskal-Wallis + confronti pairwise Wilcoxon con Holm.
 analisi_numerica_automatica <- function(dati, y, x) {
 
@@ -649,7 +650,7 @@ analisi_numerica_automatica <- function(dati, y, x) {
   if (nrow(d) < 3) {
     return(
       list(
-        testo = "Dati insufficienti per il test.",
+        testo = "Insufficient data for the test.",
         dati = d,
         tipo = "none"
       )
@@ -672,7 +673,7 @@ analisi_numerica_automatica <- function(dati, y, x) {
     )
 
     testo <- paste0(
-      "Test: correlazione di Spearman\n",
+      "Test: Spearman correlation\n",
       "N = ", nrow(d), "\n",
       "rho = ", round(as.numeric(test$estimate), 3), "\n",
       "p = ", signif(test$p.value, 4)
@@ -697,7 +698,7 @@ analisi_numerica_automatica <- function(dati, y, x) {
   if (n_gruppi < 2) {
     return(
       list(
-        testo = "La variabile selezionata contiene meno di due gruppi utilizzabili.",
+        testo = "The selected variable contains fewer than two usable groups.",
         dati = d,
         tipo = "factor"
       )
@@ -764,7 +765,7 @@ analisi_numerica_automatica <- function(dati, y, x) {
       as.numeric(test$parameter),
       "; p = ",
       signif(test$p.value, 4),
-      "\n\nConfronti pairwise Wilcoxon, p corretti con Holm:\n",
+      "\n\nPairwise Wilcoxon comparisons, Holm-adjusted p-values:\n",
       paste(matrice_p, collapse = "\n")
     )
   }
@@ -777,8 +778,8 @@ analisi_numerica_automatica <- function(dati, y, x) {
 }
 
 
-# Test per una risposta binaria/categoriale (es. presenza LEH).
-# Usa Fisher exact; è preferibile con campioni piccoli o celle poco popolate.
+# Test for a binary/categorical response (e.g. LEH presence).
+# Uses Fisher exact; preferable for small samples or sparse cells.
 analisi_categoriale_fisher <- function(dati, y, x) {
 
   d <- dati[
@@ -791,7 +792,7 @@ analisi_categoriale_fisher <- function(dati, y, x) {
   if (nrow(d) < 3) {
     return(
       list(
-        testo = "Dati insufficienti per il test.",
+        testo = "Insufficient data for the test.",
         dati = d
       )
     )
@@ -805,7 +806,7 @@ analisi_categoriale_fisher <- function(dati, y, x) {
   if (nrow(tab) < 2 || ncol(tab) < 2) {
     return(
       list(
-        testo = "Sono necessari almeno due livelli per entrambe le variabili.",
+        testo = "At least two levels are required for both variables.",
         dati = d
       )
     )
@@ -825,7 +826,7 @@ analisi_categoriale_fisher <- function(dati, y, x) {
     )
 
     testo <- paste0(
-      "Test: chi-quadrato con p simulato (10.000 repliche)\n",
+      "Test: chi-square with simulated p-value (10,000 replicates)\n",
       "N = ", sum(tab), "\n",
       "p = ", signif(test_chi$p.value, 4)
     )
@@ -848,7 +849,7 @@ analisi_categoriale_fisher <- function(dati, y, x) {
 
 
 # ---------------------------------------------------------------------------
-# 2. FUNZIONE PRINCIPALE: ESEGUE TUTTO IL WORKFLOW
+# 2. MAIN FUNCTION: RUNS THE COMPLETE WORKFLOW
 # ---------------------------------------------------------------------------
 
 esegui_pipeline_FA <- function(
@@ -872,7 +873,7 @@ esegui_pipeline_FA <- function(
   if (length(mancanti) > 0) {
     stop(
       paste0(
-        "Mancano i seguenti fogli Excel: ",
+        "The following Excel sheets are missing: ",
         paste(mancanti, collapse = ", ")
       )
     )
@@ -911,7 +912,7 @@ esegui_pipeline_FA <- function(
   if (length(colonne_mancanti) > 0) {
     stop(
       paste0(
-        "Nel foglio Tooth_Master mancano le colonne: ",
+        "The following columns are missing from Tooth_Master: ",
         paste(colonne_mancanti, collapse = ", ")
       )
     )
@@ -1008,18 +1009,18 @@ esegui_pipeline_FA <- function(
   }
 
   # -------------------------------------------------------
-  # INTERPRETAZIONE DEI VUOTI IN LEH_Present
+  # INTERPRETATION OF BLANKS IN LEH_Present
   # -------------------------------------------------------
   #
-  # Nel dataset originale possono esserci valori 1 per la presenza
+  # In the original dataset, value 1 may indicate presence
   # e celle vuote invece di espliciti 0.
   #
   # Se leh_blank_absence = TRUE:
-  #   1. individuiamo i tipi dentali nei quali compare almeno un LEH positivo;
-  #   2. SOLO per quei tipi dentali, interpretiamo i blank come "assenza".
+  #   1. identify tooth types with at least one positive LEH observation;
+  #   2. ONLY for those tooth types, interpret blanks as "absence".
   #
-  # In questo modo non trasformiamo automaticamente in assenza i blank
-  # di denti che non sono stati utilizzati per la registrazione LEH.
+  # This avoids automatically converting blanks to absence
+  # for teeth that were not used for LEH recording.
   #
   # Questa assunzione viene registrata nel foglio FA_Clean_Method.
 
@@ -1108,7 +1109,7 @@ esegui_pipeline_FA <- function(
     )
   )
 
-  # STADIO 1: errore di misura
+  # STAGE 1: measurement error
   ME_screen <- grubbs_holm_iterativo(
     dati = misure_long,
     colonna_valore = "RepDiff",
@@ -1135,7 +1136,7 @@ esegui_pipeline_FA <- function(
 
   if (nrow(controllo_lati) > 0) {
     stop(
-      "Esistono record multipli per lo stesso individuo, tratto e lato."
+      "Multiple records exist for the same individual, trait, and side."
     )
   }
 
@@ -1211,7 +1212,7 @@ esegui_pipeline_FA <- function(
       )
     )
 
-  # STADIO 2: outlier R-L
+  # STAGE 2: R-L outliers
   RL_screen <- grubbs_holm_iterativo(
     dati = coppie,
     colonna_valore = "R_minus_L",
@@ -1226,7 +1227,7 @@ esegui_pipeline_FA <- function(
   FA_Pairs_Clean <- RL_screen$clean
   RL_log <- RL_screen$log
 
-  # ANOVA per tratto
+  # ANOVA by trait
   lista_tratti <- split(
     FA_Pairs_Clean,
     FA_Pairs_Clean$Trait
@@ -1330,7 +1331,7 @@ esegui_pipeline_FA <- function(
     )
 
   # -------------------------------------------------------------------------
-  # LEH A LIVELLO INDIVIDUALE E DELLO STESSO TIPO DENTALE
+  # LEH AT THE INDIVIDUAL AND SAME-TOOTH-TYPE LEVEL
   # -------------------------------------------------------------------------
 
   LEH_Individual <- Tooth_Master %>%
@@ -1467,7 +1468,7 @@ esegui_pipeline_FA <- function(
     )
 
   # -------------------------------------------------------------------------
-  # COMPOSITE FLUCTUATING ASYMMETRY (FA) A LIVELLO INDIVIDUALE
+  # COMPOSITE FLUCTUATING ASYMMETRY (FA) AT THE INDIVIDUAL LEVEL
   # -------------------------------------------------------------------------
   #
   # Il composito viene costruito SOLO con i tratti che:
@@ -1602,7 +1603,7 @@ esegui_pipeline_FA <- function(
     )
 
   # -------------------------------------------------------------------------
-  # RIEPILOGO INDIVIDUALE
+  # INDIVIDUAL SUMMARY
   # -------------------------------------------------------------------------
 
   Individual_Summary <- LEH_Individual %>%
@@ -1657,7 +1658,7 @@ esegui_pipeline_FA <- function(
       )
   } else {
     FA_ME_Outliers <- tibble(
-      Nota = "Nessun candidato Grubbs disponibile."
+      Nota = "No Grubbs candidate available."
     )
   }
 
@@ -1685,7 +1686,7 @@ esegui_pipeline_FA <- function(
       )
   } else {
     FA_RL_Outliers <- tibble(
-      Nota = "Nessun candidato Grubbs disponibile."
+      Nota = "No Grubbs candidate available."
     )
   }
 
@@ -1739,7 +1740,7 @@ esegui_pipeline_FA <- function(
   }
 
   # -------------------------------------------------------------------------
-  # DATASET PER LA DIMENSIONE DENTARIA
+  # TOOTH-SIZE DATASET
   # -------------------------------------------------------------------------
   #
   # Per evitare pseudoreplicazione:
@@ -1915,7 +1916,7 @@ esegui_pipeline_FA <- function(
     )
 
   FA_Clean_Method <- tibble(
-    Voce = c(
+    Item = c(
       "FA CLEANED ANALYSIS - OUTLIER PROTOCOL",
       "Raw data policy",
       "Cleaning 1",
@@ -1947,44 +1948,44 @@ esegui_pipeline_FA <- function(
       "Alpha",
       "Important"
     ),
-    Descrizione = c(
+    Description = c(
       "",
-      "Nessuna misura odontometrica originale viene cancellata o modificata; le esclusioni sono flag analitici.",
-      "ToothType i2 standardizzato a I2.",
-      "Eliminato il duplicato T54 Lower L M2 con WearStage 5; mantenuto WearStage 3.",
-      "Per ciascun tratto Arch x ToothType x Dimension vengono esaminate le differenze signed Rep2-Rep1.",
-      "Test di Grubbs a due code sul valore più estremo di ciascun tratto.",
-      "A ogni iterazione i p-value dei candidati dei diversi tratti vengono corretti con il metodo di Holm.",
-      "Dopo le esclusioni confermate il test viene ripetuto; ci si ferma quando nessun nuovo candidato ha p_Holm < alpha.",
-      "Un outlier ME esclude soltanto quello specifico dente-lato-dimensione dalla FA.",
+      "No original odontometric measurement is deleted or modified; exclusions are analytical flags.",
+      "ToothType i2 standardized to I2.",
+      "Duplicate T54 Lower L M2 with WearStage 5 removed; WearStage 3 retained.",
+      "For each Arch × ToothType × Dimension trait, signed Rep2-Rep1 differences are examined.",
+      "Two-sided Grubbs test on the most extreme value of each trait.",
+      "At each iteration, candidate p-values across traits are adjusted using the Holm method.",
+      "After confirmed exclusions, the test is repeated until no new candidate has p_Holm < alpha.",
+      "A measurement-error outlier excludes only that specific tooth-side-dimension from FA.",
       as.character(nrow(ME_esclusi)),
-      "Dopo la pulizia ME le repliche vengono mediate per R e L; l'asimmetria signed è R-L.",
-      "Test di Grubbs a due code su R-L con la stessa procedura iterativa e correzione di Holm.",
-      "Un outlier R-L esclude soltanto quella coppia bilaterale da quello specifico tratto.",
+      "After measurement-error cleaning, replicates are averaged for R and L; signed asymmetry is R-L.",
+      "Two-sided Grubbs test on R-L using the same iterative procedure and Holm correction.",
+      "An R-L outlier excludes only that bilateral pair from that specific trait.",
       as.character(nrow(RL_esclusi)),
       as.character(nrow(FA_Pairs_Clean)),
-      "ANOVA mista a due vie: Individual=random; Side=fixed; due misure replicate per lato.",
-      "L'effetto Side viene testato contro Individual x Side.",
-      "Individual x Side viene testato contro l'errore residuo tra repliche.",
-      "D'Agostino-Pearson K2 sulla distribuzione R-L; Shapiro-Wilk soltanto se n<8.",
-      "Correlazione di Spearman tra |R-L| e dimensione media (R+L)/2.",
+      "Two-way mixed ANOVA: Individual=random; Side=fixed; two replicated measurements per side.",
+      "The Side effect is tested against Individual × Side.",
+      "Individual × Side is tested against residual replicate error.",
+      "D’Agostino-Pearson K2 for the R-L distribution; Shapiro-Wilk only if n<8.",
+      "Spearman correlation between |R-L| and mean trait size (R+L)/2.",
       "FA_abs = |R-L|.",
-      "Nel foglio FA_Pairs_Clean usare FA_abs; per l'analisi primaria filtrare Use_for_group_tests = Yes.",
+      "In FA_Pairs_Clean use FA_abs; for the primary analysis filter Use_for_group_tests = Yes.",
       ifelse(
         leh_blank_absence,
-        "Per i tipi dentali nei quali compare almeno un LEH positivo, i blank di LEH_Present sono interpretati come assenza.",
-        "I blank di LEH_Present restano missing e non vengono interpretati come assenza."
+        "For tooth types with at least one positive LEH observation, blank LEH_Present cells are interpreted as absence.",
+        "Blank LEH_Present cells remain missing and are not interpreted as absence."
       ),
       paste(
         denti_LEH_scorabili,
         collapse = ", "
       ),
-      "CrownArea = MD x BL (mm^2) e' la misura principale di dimensione coronale; CrownGM = sqrt(MD x BL) e' disponibile come indice lineare.",
-      "Le dimensioni R e L non sono trattate come osservazioni indipendenti: gli indici vengono calcolati per lato e poi mediati per individuo e tipo dentale.",
-      "FA_abs viene standardizzata dividendo per la media campionaria FA_abs dello stesso tratto; Composite_FA e' la media individuale dei valori standardizzati dei soli tratti che superano lo screening.",
-      "N_FA_traits registra il numero di tratti inclusi; Composite_FA_ge2 richiede almeno 2 tratti; Composite_FA_complete richiede tutti i tratti validi.",
+      "CrownArea = MD × BL (mm²) is the primary crown-size measure; CrownGM = sqrt(MD × BL) is available as a linear index.",
+      "Right and left dimensions are not treated as independent observations: indices are calculated by side and then averaged by individual and tooth type.",
+      "FA_abs is standardized by dividing it by the sample mean FA_abs of the same trait; Composite_FA is the individual mean of standardized values from traits that pass screening.",
+      "N_FA_traits records the number of included traits; Composite_FA_ge2 requires at least 2 traits; Composite_FA_complete requires all valid traits.",
       as.character(alpha),
-      "Non sono state applicate esclusioni biologiche per usura, carie, danno, tartaro ecc. L'eta' puo' influenzare soprattutto MD tramite usura interprossimale."
+      "No biological exclusions for wear, caries, damage, calculus, etc. were applied. Age may affect MD in particular through interproximal wear."
     )
   )
 
@@ -2016,7 +2017,7 @@ esegui_pipeline_FA <- function(
 
 
 # ---------------------------------------------------------------------------
-# 3. FUNZIONE PER CREARE IL FILE EXCEL DA SCARICARE
+# 3. FUNCTION TO CREATE THE DOWNLOADABLE EXCEL FILE
 # ---------------------------------------------------------------------------
 
 crea_excel_finale <- function(
@@ -2241,7 +2242,7 @@ crea_excel_finale <- function(
 
 
 # ---------------------------------------------------------------------------
-# 4. INTERFACCIA GRAFICA
+# 4. USER INTERFACE
 # ---------------------------------------------------------------------------
 
 ui <- fluidPage(
@@ -2260,13 +2261,13 @@ ui <- fluidPage(
 
       fileInput(
         "file",
-        "1. Carica il file Excel originale",
+        "1. Upload the original Excel file",
         accept = c(".xlsx")
       ),
 
       numericInput(
         "alpha",
-        "Livello alfa per lo screening FA",
+        "Alpha level for FA screening",
         value = 0.05,
         min = 0.001,
         max = 0.10,
@@ -2275,23 +2276,23 @@ ui <- fluidPage(
 
       checkboxInput(
         "m3",
-        "Includi M3 come tratto FA esplorativo",
+        "Include M3 as an exploratory FA trait",
         value = TRUE
       ),
 
       checkboxInput(
         "leh_blank_absence",
-        "LEH: interpreta i blank come assenza nei tipi dentali effettivamente scorati",
+        "LEH: interpret blanks as absence for tooth types actually scored",
         value = TRUE
       ),
 
       helpText(
-        "Nel file attuale LEH_Present usa valori 1 e celle vuote. Questa opzione rende esplicita l'interpretazione dei vuoti."
+        "In the current file, LEH_Present uses values of 1 and blank cells. This option makes the interpretation of blanks explicit."
       ),
 
       actionButton(
         "run",
-        "2. Prepara i dati",
+        "2. Prepare data",
         class = "btn-primary"
       ),
 
@@ -2300,13 +2301,13 @@ ui <- fluidPage(
 
       downloadButton(
         "download",
-        "3. Scarica Excel finale"
+        "3. Download final Excel"
       ),
 
       hr(),
 
       helpText(
-        "Il file originale non viene modificato."
+        "The original file is never modified."
       )
     ),
 
@@ -2315,38 +2316,38 @@ ui <- fluidPage(
       tabsetPanel(
 
         # -------------------------------------------------------------------
-        # RIEPILOGO
+        # SUMMARY
         # -------------------------------------------------------------------
         tabPanel(
-          "Riepilogo",
+          "Summary",
           br(),
           uiOutput("summary_boxes"),
           br(),
-          h4("Tratti FA consigliati per le analisi primarie"),
+          h4("FA traits recommended for primary analyses"),
           verbatimTextOutput("usable_traits"),
           hr(),
-          h4("Dove sono i dati da usare"),
+          h4("Where to find the analysis datasets"),
           tags$ul(
             tags$li(
               tags$b("FA: "),
-              "FA_Pairs_Clean; risposta primaria = FA_abs"
+              "FA_Pairs_Clean; primary response = FA_abs"
             ),
             tags$li(
-              tags$b("Dimensione dentaria: "),
-              "Tooth_Size_Individual; risposta primaria = CrownArea"
+              tags$b("Tooth size: "),
+              "Tooth_Size_Individual; primary response = CrownArea"
             ),
             tags$li(
-              tags$b("LEH individuale: "),
+              tags$b("Individual LEH: "),
               "LEH_Individual"
             )
           )
         ),
 
         # -------------------------------------------------------------------
-        # ANALISI FA
+        # FA ANALYSIS
         # -------------------------------------------------------------------
         tabPanel(
-          "FA: grafici e test",
+          "FA: plots and tests",
           br(),
 
           fluidRow(
@@ -2354,7 +2355,7 @@ ui <- fluidPage(
               4,
               checkboxInput(
                 "fa_primary",
-                "Usa soltanto tratti che superano lo screening FA",
+                "Use only traits that pass FA screening",
                 value = TRUE
               )
             ),
@@ -2362,7 +2363,7 @@ ui <- fluidPage(
               4,
               selectInput(
                 "fa_trait",
-                "Tratto",
+                "Trait",
                 choices = NULL
               )
             ),
@@ -2370,10 +2371,10 @@ ui <- fluidPage(
               4,
               selectInput(
                 "fa_response",
-                "Indice FA",
+                "FA index",
                 choices = c(
-                  "FA assoluta |R-L|" = "FA_abs",
-                  "FA relativa" = "FA_relative"
+                  "Absolute FA |R-L|" = "FA_abs",
+                  "Relative FA" = "FA_relative"
                 ),
                 selected = "FA_abs"
               )
@@ -2385,15 +2386,15 @@ ui <- fluidPage(
               6,
               selectInput(
                 "fa_predictor",
-                "Variabile da confrontare con FA",
+                "Variable to compare with FA",
                 choices = c(
-                  "Sesso" = "Sex",
-                  "Classe di eta'" = "AgeClass",
-                  "Trattamento funerario" = "Funerary",
-                  "LEH individuale" = "Individual_LEH",
-                  "LEH dello stesso tipo dentale" = "LEH_same_tooth",
-                  "Dimensione media dello stesso carattere" = "Mean_size",
-                  "Usura media della coppia" = "Wear_mean_pair"
+                  "Sex" = "Sex",
+                  "Age class" = "AgeClass",
+                  "Funerary variable" = "Funerary",
+                  "Individual LEH" = "Individual_LEH",
+                  "LEH of the same tooth type" = "LEH_same_tooth",
+                  "Mean size of the same trait" = "Mean_size",
+                  "Mean wear of the antimeric pair" = "Wear_mean_pair"
                 )
               )
             ),
@@ -2401,7 +2402,7 @@ ui <- fluidPage(
               6,
               checkboxInput(
                 "fa_certain_sex",
-                "Se X = sesso, usa solo M e F certi",
+                "If X = sex, use only definite M and F",
                 value = TRUE
               )
             )
@@ -2412,21 +2413,21 @@ ui <- fluidPage(
             height = "460px"
           ),
 
-          h4("Test statistico"),
+          h4("Statistical test"),
           verbatimTextOutput(
             "fa_test"
           ),
 
-          h4("Dati usati nel test"),
+          h4("Data used in the test"),
           DTOutput(
             "fa_analysis_table"
           ),
 
           hr(),
-          h3("Composite FA individuale"),
+          h3("Individual composite FA"),
 
           p(
-            "Ogni FA_abs viene standardizzata rispetto alla media del proprio tratto; il punteggio individuale e' la media dei tratti FA validi disponibili."
+            "Each FA_abs value is standardized by the mean of its own trait; the individual score is the mean of the available valid FA traits."
           ),
 
           fluidRow(
@@ -2434,11 +2435,11 @@ ui <- fluidPage(
               4,
               selectInput(
                 "cfa_response",
-                "Punteggio composito",
+                "Composite score",
                 choices = c(
-                  "Composite FA - almeno 2 tratti" = "Composite_FA_ge2",
-                  "Composite FA - tutti i tratti disponibili" = "Composite_FA",
-                  "Composite FA - complete case" = "Composite_FA_complete"
+                  "Composite FA - at least 2 traits" = "Composite_FA_ge2",
+                  "Composite FA - all available traits" = "Composite_FA",
+                  "Composite FA - complete cases" = "Composite_FA_complete"
                 ),
                 selected = "Composite_FA_ge2"
               )
@@ -2447,13 +2448,13 @@ ui <- fluidPage(
               4,
               selectInput(
                 "cfa_predictor",
-                "Variabile di confronto",
+                "Comparison variable",
                 choices = c(
-                  "Sesso" = "Sex",
-                  "Classe di eta'" = "AgeClass",
-                  "Trattamento funerario" = "Funerary",
-                  "LEH individuale" = "Individual_LEH",
-                  "Numero massimo di bande LEH" = "Individual_LEH_CountMax"
+                  "Sex" = "Sex",
+                  "Age class" = "AgeClass",
+                  "Funerary variable" = "Funerary",
+                  "Individual LEH" = "Individual_LEH",
+                  "Maximum number of LEH bands" = "Individual_LEH_CountMax"
                 )
               )
             ),
@@ -2461,7 +2462,7 @@ ui <- fluidPage(
               4,
               checkboxInput(
                 "cfa_certain_sex",
-                "Se X = sesso, usa solo M e F certi",
+                "If X = sex, use only definite M and F",
                 value = TRUE
               )
             )
@@ -2472,12 +2473,12 @@ ui <- fluidPage(
             height = "430px"
           ),
 
-          h4("Test statistico sul Composite FA"),
+          h4("Statistical test for composite FA"),
           verbatimTextOutput(
             "cfa_test"
           ),
 
-          h4("Dati individuali del Composite FA"),
+          h4("Individual composite FA data"),
           DTOutput(
             "cfa_table"
           )
@@ -2487,12 +2488,12 @@ ui <- fluidPage(
         # DIMENSIONE DENTARIA
         # -------------------------------------------------------------------
         tabPanel(
-          "Dimensione dentaria",
+          "Tooth size",
           br(),
 
           p(
-            tags$b("Misura principale: "),
-            "CrownArea = MD × BL (mm²). È disponibile anche CrownGM = √(MD × BL), che mantiene unità lineari (mm). R e L vengono prima calcolati separatamente e poi mediati, quindi ogni individuo compare una sola volta per tipo dentale."
+            tags$b("Primary measure: "),
+            "CrownArea = MD × BL (mm²). CrownGM = √(MD × BL) is also available and retains linear units (mm). Right and left sides are first calculated separately and then averaged, so each individual contributes only one observation per tooth type."
           ),
 
           fluidRow(
@@ -2500,7 +2501,7 @@ ui <- fluidPage(
               4,
               selectInput(
                 "size_trait",
-                "Tipo dentale / arcata",
+                "Tooth type / arch",
                 choices = NULL
               )
             ),
@@ -2508,14 +2509,14 @@ ui <- fluidPage(
               4,
               selectInput(
                 "size_response",
-                "Variabile di dimensione",
+                "Size variable",
                 choices = c(
                   "Crown area = MD × BL (mm²)" = "CrownArea",
                   "Geometric mean = √(MD × BL) (mm)" = "CrownGM",
                   "Crown module = (MD + BL)/2 (mm)" = "CrownModule",
                   "Mesiodistal diameter (mm)" = "MD",
                   "Buccolingual diameter (mm)" = "BL",
-                  "Crown index = 100 × BL/MD (forma)" = "CrownIndex"
+                  "Crown index = 100 × BL/MD (shape)" = "CrownIndex"
                 ),
                 selected = "CrownArea"
               )
@@ -2524,14 +2525,14 @@ ui <- fluidPage(
               4,
               selectInput(
                 "size_predictor",
-                "Variabile da confrontare",
+                "Comparison variable",
                 choices = c(
-                  "Sesso" = "Sex",
-                  "Classe di eta'" = "AgeClass",
-                  "Trattamento funerario" = "Funerary",
-                  "LEH individuale" = "Individual_LEH",
-                  "LEH dello stesso tipo dentale" = "LEH_same_tooth",
-                  "Usura media" = "Wear_mean"
+                  "Sex" = "Sex",
+                  "Age class" = "AgeClass",
+                  "Funerary variable" = "Funerary",
+                  "Individual LEH" = "Individual_LEH",
+                  "LEH of the same tooth type" = "LEH_same_tooth",
+                  "Mean wear" = "Wear_mean"
                 )
               )
             )
@@ -2539,7 +2540,7 @@ ui <- fluidPage(
 
           checkboxInput(
             "size_certain_sex",
-            "Se X = sesso, usa solo M e F certi",
+            "If X = sex, use only definite M and F",
             value = TRUE
           ),
 
@@ -2547,8 +2548,8 @@ ui <- fluidPage(
             condition = "input.size_predictor == 'AgeClass'",
             div(
               style = "padding:10px; background:#fff3cd; border:1px solid #ffe69c; margin-bottom:15px;",
-              tags$b("Nota metodologica: "),
-              "la dimensione coronale biologica non cambia dopo la formazione, ma soprattutto MD può diminuire con l'usura interprossimale. Un'associazione con AgeClass deve quindi essere interpretata insieme a Wear_mean."
+              tags$b("Methodological note: "),
+              "biological crown size does not change after formation, but MD in particular can decrease through interproximal wear. Any association with AgeClass should therefore be interpreted together with Wear_mean."
             )
           ),
 
@@ -2557,12 +2558,12 @@ ui <- fluidPage(
             height = "460px"
           ),
 
-          h4("Test statistico"),
+          h4("Statistical test"),
           verbatimTextOutput(
             "size_test"
           ),
 
-          h4("Dati usati nel test"),
+          h4("Data used in the test"),
           DTOutput(
             "size_analysis_table"
           )
@@ -2572,7 +2573,7 @@ ui <- fluidPage(
         # LEH
         # -------------------------------------------------------------------
         tabPanel(
-          "LEH: grafici e test",
+          "LEH: plots and tests",
           br(),
 
           fluidRow(
@@ -2580,10 +2581,10 @@ ui <- fluidPage(
               6,
               selectInput(
                 "leh_response",
-                "Variabile LEH",
+                "LEH variable",
                 choices = c(
-                  "Presenza/assenza individuale" = "Individual_LEH",
-                  "Numero massimo di bande osservate" = "Individual_LEH_CountMax"
+                  "Individual presence/absence" = "Individual_LEH",
+                  "Maximum number of recorded bands" = "Individual_LEH_CountMax"
                 ),
                 selected = "Individual_LEH"
               )
@@ -2592,11 +2593,11 @@ ui <- fluidPage(
               6,
               selectInput(
                 "leh_predictor",
-                "Variabile di confronto",
+                "Comparison variable",
                 choices = c(
-                  "Sesso" = "Sex",
-                  "Classe di eta'" = "AgeClass",
-                  "Trattamento funerario" = "Funerary"
+                  "Sex" = "Sex",
+                  "Age class" = "AgeClass",
+                  "Funerary variable" = "Funerary"
                 )
               )
             )
@@ -2604,7 +2605,7 @@ ui <- fluidPage(
 
           checkboxInput(
             "leh_certain_sex",
-            "Se X = sesso, usa solo M e F certi",
+            "If X = sex, use only definite M and F",
             value = TRUE
           ),
 
@@ -2613,28 +2614,28 @@ ui <- fluidPage(
             height = "460px"
           ),
 
-          h4("Test statistico"),
+          h4("Statistical test"),
           verbatimTextOutput(
             "leh_test"
           ),
 
-          h4("Dati usati nel test"),
+          h4("Data used in the test"),
           DTOutput(
             "leh_analysis_table"
           )
         ),
 
         # -------------------------------------------------------------------
-        # TABELLE DI CONTROLLO
+        # CONTROL TABLES
         # -------------------------------------------------------------------
         tabPanel(
-          "ANOVA FA",
+          "FA ANOVA",
           br(),
           DTOutput("anova_table")
         ),
 
         tabPanel(
-          "FA individuale",
+          "Individual FA",
           br(),
           DTOutput("pairs_table")
         ),
@@ -2652,19 +2653,19 @@ ui <- fluidPage(
         ),
 
         tabPanel(
-          "Outlier misura",
+          "Measurement outliers",
           br(),
           DTOutput("me_table")
         ),
 
         tabPanel(
-          "Outlier R-L",
+          "R-L outliers",
           br(),
           DTOutput("rl_table")
         ),
 
         tabPanel(
-          "Metodo",
+          "Methods",
           br(),
           DTOutput("method_table")
         )
@@ -2689,13 +2690,13 @@ server <- function(input, output, session) {
       req(input$file)
 
       withProgress(
-        message = "Preparazione e analisi dei dati...",
+        message = "Preparing and analyzing data...",
         value = 0,
         {
 
           incProgress(
             0.15,
-            detail = "Lettura e controllo del file"
+            detail = "Reading and checking the file"
           )
 
           risultato <- tryCatch(
@@ -2703,7 +2704,7 @@ server <- function(input, output, session) {
 
               incProgress(
                 0.30,
-                detail = "Screening FA e outlier"
+                detail = "FA and outlier screening"
               )
 
               x <- esegui_pipeline_FA(
@@ -2715,7 +2716,7 @@ server <- function(input, output, session) {
 
               incProgress(
                 0.45,
-                detail = "Preparazione dei dataset biologici"
+                detail = "Preparing biological datasets"
               )
 
               x
@@ -2724,9 +2725,9 @@ server <- function(input, output, session) {
 
               showModal(
                 modalDialog(
-                  title = "Errore",
+                  title = "Error",
                   paste(
-                    "L'analisi non è stata completata:",
+                    "The analysis could not be completed:",
                     e$message
                   ),
                   easyClose = TRUE
@@ -2743,7 +2744,7 @@ server <- function(input, output, session) {
 
       if (!is.null(risultati())) {
         showNotification(
-          "Dati preparati correttamente.",
+          "Data prepared successfully.",
           type = "message",
           duration = 5
         )
@@ -2753,7 +2754,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # AGGIORNA LE SCELTE DEI TRATTI
+  # UPDATE TRAIT CHOICES
   # -------------------------------------------------------------------------
 
   observe({
@@ -2799,7 +2800,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # RIEPILOGO
+  # SUMMARY
   # -------------------------------------------------------------------------
 
   output$summary_boxes <- renderUI({
@@ -2816,7 +2817,7 @@ server <- function(input, output, session) {
             x$ME_n,
             style = "margin-top:0"
           ),
-          "outlier di errore di misura esclusi"
+          "measurement-error outliers excluded"
         )
       ),
 
@@ -2827,7 +2828,7 @@ server <- function(input, output, session) {
             x$RL_n,
             style = "margin-top:0"
           ),
-          "outlier R-L esclusi"
+          "R-L outliers excluded"
         )
       ),
 
@@ -2838,7 +2839,7 @@ server <- function(input, output, session) {
             x$Pair_n,
             style = "margin-top:0"
           ),
-          "coppie FA pulite"
+          "clean FA pairs"
         )
       )
     )
@@ -2852,7 +2853,7 @@ server <- function(input, output, session) {
 
     if (length(x$usable_traits) == 0) {
       return(
-        "Nessun tratto supera tutti i criteri di screening."
+        "No trait passes all screening criteria."
       )
     }
 
@@ -2864,7 +2865,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # ANALISI FA
+  # FA ANALYSIS
   # -------------------------------------------------------------------------
 
   fa_dati <- reactive({
@@ -2912,7 +2913,7 @@ server <- function(input, output, session) {
     validate(
       need(
         nrow(d) >= 3,
-        "Dati insufficienti per il grafico."
+        "Insufficient data for the plot."
       )
     )
 
@@ -3011,7 +3012,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # COMPOSITE FA INDIVIDUALE
+  # INDIVIDUAL COMPOSITE FA
   # -------------------------------------------------------------------------
 
   cfa_dati <- reactive({
@@ -3056,7 +3057,7 @@ server <- function(input, output, session) {
     validate(
       need(
         nrow(d) >= 3,
-        "Dati insufficienti per il grafico."
+        "Insufficient data for the plot."
       )
     )
 
@@ -3115,7 +3116,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # ANALISI DIMENSIONE DENTARIA
+  # TOOTH-SIZE ANALYSIS
   # -------------------------------------------------------------------------
 
   size_dati <- reactive({
@@ -3163,7 +3164,7 @@ server <- function(input, output, session) {
     validate(
       need(
         nrow(d) >= 3,
-        "Dati insufficienti per il grafico."
+        "Insufficient data for the plot."
       )
     )
 
@@ -3262,7 +3263,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # ANALISI LEH
+  # LEH ANALYSIS
   # -------------------------------------------------------------------------
 
   leh_dati <- reactive({
@@ -3317,7 +3318,7 @@ server <- function(input, output, session) {
     validate(
       need(
         nrow(d) >= 3,
-        "Dati insufficienti per il grafico."
+        "Insufficient data for the plot."
       )
     )
 
@@ -3359,10 +3360,10 @@ server <- function(input, output, session) {
         ) +
         labs(
           x = xvar,
-          y = "Proporzione",
+          y = "Proportion",
           fill = "LEH",
           title = paste(
-            "LEH individuale by",
+            "Individual LEH by",
             xvar
           )
         ) +
@@ -3389,7 +3390,7 @@ server <- function(input, output, session) {
         ) +
         labs(
           x = xvar,
-          y = "Numero massimo di bande LEH",
+          y = "Maximum number of LEH bands",
           title = paste(
             "LEH count by",
             xvar
@@ -3423,7 +3424,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # TABELLE DI CONTROLLO
+  # CONTROL TABLES
   # -------------------------------------------------------------------------
 
   output$anova_table <- renderDT({
@@ -3545,7 +3546,7 @@ server <- function(input, output, session) {
 
 
   # -------------------------------------------------------------------------
-  # DOWNLOAD EXCEL
+  # EXCEL DOWNLOAD
   # -------------------------------------------------------------------------
 
   output$download <- downloadHandler(
@@ -3560,7 +3561,7 @@ server <- function(input, output, session) {
 
       if (is.null(x)) {
         stop(
-          "Prima preparare i dati."
+          "Prepare the data first."
         )
       }
 
@@ -3574,7 +3575,7 @@ server <- function(input, output, session) {
 
 
 # ---------------------------------------------------------------------------
-# 6. AVVIO DELL'APP
+# 6. START THE APP
 # ---------------------------------------------------------------------------
 
 shinyApp(
