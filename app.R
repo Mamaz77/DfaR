@@ -16,32 +16,15 @@
 # 0. PACCHETTI
 # ---------------------------------------------------------------------------
 
-pacchetti <- c(
-  "shiny",
-  "readxl",
-  "dplyr",
-  "tidyr",
-  "tibble",
-  "openxlsx",
-  "DT",
-  "ggplot2",
-  "scales"
-)
-
-mancanti <- pacchetti[!(pacchetti %in% rownames(installed.packages()))]
-
-if (length(mancanti) > 0) {
-  stop(
-    paste0(
-      "Pacchetti R mancanti: ",
-      paste(mancanti, collapse = ", "),
-      ". Nella versione online questi pacchetti vengono installati durante il deploy tramite manifest.json."
-    )
-  )
-}
-
-invisible(lapply(pacchetti, library, character.only = TRUE))
-
+library(shiny)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(openxlsx)
+library(DT)
+library(ggplot2)
+library(scales)
 
 # ---------------------------------------------------------------------------
 # 1. FUNZIONI DI SERVIZIO
