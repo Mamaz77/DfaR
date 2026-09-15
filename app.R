@@ -2830,6 +2830,14 @@ ui <- fluidPage(
 # 5. SERVER
 # ---------------------------------------------------------------------------
 
+# Consistent age ordering across every categorical plot; other variables retain their order.
+dfar_plot_factor <- function(value, variable) {
+  if (!identical(variable, "AgeClass")) return(factor(value))
+  preferred <- c("YA", "MA", "OA")
+  additional <- sort(setdiff(unique(as.character(value[!is.na(value)])), preferred))
+  factor(as.character(value), levels = c(preferred, additional))
+}
+
 server <- function(input, output, session) {
   observeEvent(input$open_help, {
     updateTabsetPanel(session, "main_tabs", selected = "how_to_use")
@@ -3121,7 +3129,7 @@ server <- function(input, output, session) {
       ggplot(
         d,
         aes(
-          x = factor(.data[[xvar]]),
+          x = dfar_plot_factor(.data[[xvar]], xvar),
           y = .data[[y]]
         )
       ) +
@@ -3228,7 +3236,7 @@ server <- function(input, output, session) {
     ggplot(
       d,
       aes(
-        x = factor(.data[[xvar]]),
+        x = dfar_plot_factor(.data[[xvar]], xvar),
         y = .data[[y]]
       )
     ) +
@@ -3372,7 +3380,7 @@ server <- function(input, output, session) {
       ggplot(
         d,
         aes(
-          x = factor(.data[[xvar]]),
+          x = dfar_plot_factor(.data[[xvar]], xvar),
           y = .data[[y]]
         )
       ) +
@@ -3508,7 +3516,7 @@ server <- function(input, output, session) {
       ggplot(
         dd,
         aes(
-          x = factor(.data[[xvar]]),
+          x = dfar_plot_factor(.data[[xvar]], xvar),
           y = proportion,
           fill = Individual_LEH
         )
@@ -3537,7 +3545,7 @@ server <- function(input, output, session) {
       ggplot(
         d,
         aes(
-          x = factor(.data[[xvar]]),
+          x = dfar_plot_factor(.data[[xvar]], xvar),
           y = Individual_LEH_CountMax
         )
       ) +
