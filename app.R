@@ -1919,8 +1919,6 @@ esegui_pipeline_FA <- function(
     Item = c(
       "FA CLEANED ANALYSIS - OUTLIER PROTOCOL",
       "Raw data policy",
-      "Cleaning 1",
-      "Cleaning 2",
       "Stage 1 - measurement error",
       "Stage 1 test",
       "Stage 1 multiplicity",
@@ -1951,8 +1949,6 @@ esegui_pipeline_FA <- function(
     Description = c(
       "",
       "No original odontometric measurement is deleted or modified; exclusions are analytical flags.",
-      "ToothType i2 standardized to I2.",
-      "Duplicate T54 Lower L M2 with WearStage 5 removed; WearStage 3 retained.",
       "For each Arch × ToothType × Dimension trait, signed Rep2-Rep1 differences are examined.",
       "Two-sided Grubbs test on the most extreme value of each trait.",
       "At each iteration, candidate p-values across traits are adjusted using the Holm method.",
@@ -2245,7 +2241,153 @@ crea_excel_finale <- function(
 # 4. USER INTERFACE
 # ---------------------------------------------------------------------------
 
+# Embedded into app.R by integrate_dfar_help.R; no extra runtime files needed.
+dfar_help_css <- function() tags$style(HTML('
+.dfar-guide {max-width:1040px; color:#263745; line-height:1.65; padding:8px 4px 28px;}
+.dfar-guide h2,.dfar-guide h3 {color:#164b60;}
+.dfar-guide .guide-lead {font-size:17px; max-width:850px;}
+.dfar-guide .guide-steps {background:#eff6f8; border-left:4px solid #27778c; padding:18px 22px; border-radius:5px;}
+.dfar-guide li {margin-bottom:8px;}
+.dfar-guide details {border:1px solid #d5e1e5; border-radius:6px; margin:12px 0; padding:14px 18px; background:white;}
+.dfar-guide summary {cursor:pointer; font-size:17px; font-weight:600; color:#164b60;}
+.dfar-guide details[open] summary {margin-bottom:14px;}
+.dfar-guide .guide-table-wrap {overflow-x:auto; margin:12px 0;}
+.dfar-guide table {border-collapse:collapse; width:100%; font-size:14px;}
+.dfar-guide th,.dfar-guide td {text-align:left; vertical-align:top; padding:10px; border-bottom:1px solid #dbe4e8;}
+.dfar-guide th {background:#eff6f8;}
+.dfar-guide .guide-note {background:#fff5df; padding:12px 16px; border-left:4px solid #b6862f; margin:14px 0;}
+.dfar-guide code {white-space:normal; color:#294d60; background:#eef3f5;}
+.dfar-guide .guide-caption {font-size:13px; color:#5c6c76;}
+.dfar-context {color:#526875; border-left:3px solid #9dbec9; padding:8px 12px; margin:10px 0 18px;}
+@media print {.dfar-guide details {break-inside:avoid;} .dfar-guide {max-width:none;}}
+'))
+
+dfar_guide_table <- function(headers, rows) {
+ tags$div(class='guide-table-wrap', tags$table(
+   tags$thead(tags$tr(lapply(headers,tags$th))),
+   tags$tbody(lapply(rows,function(row) tags$tr(lapply(row,tags$td))))))
+}
+
+dfar_user_guide <- function() {
+ tags$div(class='dfar-guide',
+  h2('How to use DfaR'),
+  p(class='guide-lead','From repeated tooth measurements to fluctuating asymmetry, tooth-size and linear enamel hypoplasia summaries. Follow the steps below, then open the sections you need.'),
+  tags$div(class='guide-steps',
+   h3('Start here',style='margin-top:0'),
+   tags$ol(
+    tags$li(tags$b('Prepare your workbook. '),'Use an .xlsx file with Tooth_Master and LEH_Bands sheets. Check column names, tooth codes and repeated measurements below.'),
+    tags$li(tags$b('Upload and choose settings. '),'Select your file in the sidebar. Decide whether to include M3 and whether your LEH recording protocol supports treating missing entries as absence.'),
+    tags$li(tags$b('Click Prepare data. '),'Wait for the success message. Run this step again after changing the file, outlier alpha, M3 option or LEH coding option.'),
+    tags$li(tags$b('Check Summary and the control tables. '),'Review FA ANOVA, Measurement outliers and R-L outliers before interpreting group comparisons.'),
+    tags$li(tags$b('Explore plots and tests. '),'Choose a trait, response and comparison variable. These controls update the displayed analysis without rerunning preparation.'),
+    tags$li(tags$b('Download final Excel. '),'Keep the output together with the original workbook and the settings used. The input file on disk is not overwritten.')
+   )),
+  tags$details(open=NA,tags$summary('1. Prepare the Excel file'),
+   p('Use one row per individual, tooth type, arch and side in Tooth_Master. Put repeat measurements in columns on the same row, not in duplicate rows. A bilateral FA observation needs two measurements on the right and two on the left for the same dimension.'),
+   dfar_guide_table(c('Required column','What to enter'),list(
+    c('ID','A stable individual identifier, repeated consistently for all teeth from that individual.'),
+    c('Sex','Use M or F for definite assessments if you want the definite-sex filter to retain them. Other labels may be kept, but that filter excludes them.'),
+    c('AgeClass; Funerary','Your comparison categories. These columns must exist even if some entries are missing. Keep metadata consistent across an individual’s rows; the app takes the first nonempty value.'),
+    c('ToothType','C, M1, M2 and optionally M3 enter FA. Other tooth types do not enter the FA workflow.'),
+    c('Arch','Exactly Upper or Lower for FA.'),
+    c('Side','Exactly R or L for FA.'),
+    c('WearStage','Your recorded wear stage; use numeric values for mean-wear comparisons. The column is required, but there is no general automatic wear exclusion.'),
+    c('MD (1); MD (2)','First and second mesiodistal measurements, in the same units.'),
+    c('BL (1); BL (2)','First and second buccolingual measurements, in the same units.')
+   )),
+   p('Use millimetres for the units stated in the app’s tooth-size output. Decimal points and decimal commas are accepted in measurement cells. Leave unmeasured dimensions blank; do not use zero as a missing-value code. Text that cannot be converted to a number becomes missing.'),
+   p(tags$b('Optional LEH columns in Tooth_Master: '),tags$code('LEH_Present'),' (prefer explicit 1 = present, 0 = absent) and ',tags$code('LEH_Count'),' (numeric number of bands). Leave unknown or unobservable values blank and turn off the missing-as-absence option.'),
+   p(tags$b('LEH_Bands is required as a sheet. '),'Its contents are preserved in the output; individual LEH results are calculated from Tooth_Master, not from the rows in LEH_Bands. If there are no band records, retain the sheet with column headers and no data rows.'),
+   h4('Example of the measurement layout'),
+   dfar_guide_table(c('ID','ToothType','Arch','Side','MD (1)','MD (2)','BL (1)','BL (2)'),list(
+     c('Example_01','M1','Upper','R','10.20','10.22','11.05','11.02'),
+     c('Example_01','M1','Upper','L','10.10','10.13','10.98','11.00'))),
+   p(class='guide-caption','Illustrative rows only: add all required metadata columns. This is not a sufficient analysis sample. Trait ANOVA requires at least three clean bilateral pairs and estimable variation.')
+  ),
+  tags$details(tags$summary('2. Understand the preparation settings'),
+   dfar_guide_table(c('Control','Effect'),list(
+    c('Alpha for iterative outlier removal','Default 0.05. Controls the two iterative Grubbs outlier procedures, with Holm adjustment across trait candidates at each iteration. It does not change the fixed 0.05 thresholds used to label trait screening.'),
+    c('Include M3 as an exploratory FA trait','Adds M3 to FA preparation and exploratory results. M3 is excluded from the primary-trait list and composite FA even if it passes basic screening. This checkbox does not filter tooth-size or LEH summaries.'),
+    c('LEH: interpret blanks as absence','When enabled, the app finds tooth types with at least one LEH_Present value interpreted as positive anywhere in the workbook, then converts missing/unrecognized LEH_Present values for those tooth types to zero. The rule is by tooth type, not individual, arch or group. It does not fill LEH_Count.'),
+    c('Prepare data','Rebuilds the results for the uploaded workbook and preparation settings. Changing settings alone does not refresh existing results or the Excel download.')
+   )),
+   p('Only enable the LEH option when the recording protocol justifies the assumption. Otherwise disable it and record explicit 0/1 values for assessed teeth. A blank is not automatically evidence of absence.')
+  ),
+  tags$details(tags$summary('3. Review screening and exclusions'),
+   p('Start with Summary. Counts of excluded records and clean pairs are not counts of unique individuals: one individual can contribute several traits.'),
+   tags$ul(
+    tags$li(tags$b('Measurement outliers: '),'the app screens signed replicate differences, Rep2 − Rep1, within each arch × tooth type × dimension. An excluded record removes that side/dimension from FA and from the corresponding tooth-size dimension.'),
+    tags$li(tags$b('R-L outliers: '),'after averaging repeats, the app screens signed right-minus-left differences. Exclusion removes that bilateral trait pair from FA; it does not remove the tooth from the separate size calculation.'),
+    tags$li(tags$b('Read Excluded = Yes. '),'The audit tables also include tested candidates marked No. An outlier flag is a statistical exclusion under the current workflow, not confirmation of a recording mistake.'),
+    tags$li(tags$b('FA ANOVA: '),'inspect sample size, the FA-versus-measurement-error test, the directional-asymmetry test and the signed R−L normality check. Basic screening requires p_FA_vs_ME < 0.05, no detected directional asymmetry, and no detected departure from normality under the app’s rules.'),
+    tags$li(tags$b('Primary traits: '),'C, M1 and M2 traits passing basic screening enter the primary list and composite. The size-association result is reported but is not part of this pass/fail rule.')
+   ),
+   p('Trait codes combine U/L for arch, tooth type and MD/BL: for example UM1MD is upper first-molar mesiodistal diameter. A trait that passes screening is not automatically validated for every biological interpretation.'),
+   p('The source workbook remains intact. The exported Tooth_Master is a processed copy with analytical flags. Identify records by ID, arch, tooth type and side; SourceRow references refer to the processed input table.')
+  ),
+  tags$details(tags$summary('4. Use the analysis tabs'),
+   dfar_guide_table(c('Tab / analysis','How to use it'),list(
+    c('FA: plots and tests','Choose a trait, Absolute FA or Relative FA, then a comparison variable. Keep the screening filter on for the primary view. Turn it off to inspect other available traits, including exploratory M3.'),
+    c('Individual composite FA','Choose at least 2 traits (the default), all available traits, or complete cases. Compare N_FA_traits as well as the score; different individuals may contribute different sets of traits.'),
+    c('Tooth size','Choose a tooth/arch and a size index. Replicates are averaged within side, indices calculated by side, then available sides averaged per individual. One usable side can contribute. Trait choices require a nonmissing CrownArea somewhere in that trait.'),
+    c('LEH: plots and tests','Compare individual presence or the maximum band count. Presence means at least one assessed tooth is positive; maximum count is the largest recorded count on a tooth, not the sum across teeth.'),
+    c('Definite M and F filter','Acts only when the selected comparison variable is Sex. It does not filter other comparisons by sex.'),
+    c('Data used in the test','Use this table to check which records and sample sizes actually entered the displayed test. Records missing the selected response or comparison variable are omitted.')
+   )),
+   h4('What the main indices mean'),
+   dfar_guide_table(c('Index','Definition'),list(
+    c('FA_abs','Absolute difference between the mean right and mean left repeat measurements: |R − L|.'),
+    c('FA_relative','FA_abs divided by |(R + L)/2|; a ratio, not a percentage and not a fitted allometric correction.'),
+    c('Composite_FA','Mean of an individual’s valid FA_abs values after dividing each by the sample mean for its trait. A dimensionless, sample-dependent index; it is not directly comparable across separately normalized datasets.'),
+    c('Composite_FA_ge2 / Composite_FA_complete','At least two contributing traits / all eligible traits in the current sample, respectively.'),
+    c('CrownArea / CrownGM','MD × BL (mm²) / sqrt(MD × BL) (mm), calculated by side before averaging available sides.'),
+    c('CrownModule / CrownIndex','(MD + BL)/2 (mm) / 100 × BL/MD. CrownIndex describes proportions rather than size alone.')
+   ))
+  ),
+  tags$details(tags$summary('5. Read tests and download results'),
+   p('Numeric responses use Spearman correlation only when the comparison variable is numeric and has more than five distinct values. Otherwise it is treated as categorical: two groups use Wilcoxon rank-sum; more than two use Kruskal–Wallis and pairwise Wilcoxon tests with Holm adjustment. Individual LEH presence uses Fisher’s exact test, with a simulated chi-square fallback when necessary.'),
+   p('The composite and LEH-count plots display categories even when their numeric comparison variable triggers a Spearman test. Read the test label and the data table. A nonsignificant test does not establish equality; significance alone does not identify a biological cause. Pairwise correction does not cover every exploratory comparison made across tabs.'),
+   p('Download final Excel exports the prepared datasets and screening results. The current interactive plot and its selected group-test output are not included in that workbook; record the trait, response, comparison variable, filters, sample size and test output separately when reporting them.'),
+   dfar_guide_table(c('Output worksheet','Contents'),list(
+    c('Individual_Summary','One row per individual with metadata, individual LEH and composite FA measures.'),
+    c('FA_Pairs_Clean','Retained bilateral trait pairs, FA indices, screening labels and linked metadata.'),
+    c('FA_ANOVA_Clean / FA_ANOVA_Clean_Detail','Trait screening summaries / sums of squares, mean squares and model details.'),
+    c('Composite_FA_Individual','Composite scores and the number of contributing traits.'),
+    c('Tooth_Size_Individual','Size indices and numbers of contributing sides by individual and tooth/arch.'),
+    c('LEH_Individual','Individual LEH presence, maximum count and number of scored teeth.'),
+    c('FA_ME_Outliers / FA_RL_Outliers','Iteration logs, candidate tests and exclusion flags.'),
+    c('FA_Clean_Method','Preparation choices and method descriptions for the run.'),
+    c('Tooth_Master / LEH_Bands','Processed master table / preserved band-record sheet.')
+   ))
+  ),
+  tags$details(tags$summary('6. Troubleshooting'),
+   dfar_guide_table(c('What you see','What to check'),list(
+    c('Missing sheet or column message','Match the exact sheet names and required column headers, including spaces and parentheses in MD (1), BL (1), MD (2), BL (2).'),
+    c('Duplicate-position message','Keep one row per ID × ToothType × Arch × Side. Store repeats in the numbered measurement columns.'),
+    c('Empty trait list or no trait passes screening','Check tooth codes, both sides, both repeats, clean pair counts and FA ANOVA. For exploration, turn off the primary-trait filter. Do not change thresholds simply to obtain a result.'),
+    c('Insufficient data or preparation error on a sparse file','At least three clean bilateral pairs are needed for trait ANOVA, with nonzero estimable variation. A file with no usable FA traits can fail preparation even if LEH or size records exist.'),
+    c('Unexpectedly low LEH prevalence','Check the missing-as-absence option and Tooth_Master LEH fields. LEH_Bands alone does not populate individual LEH.'),
+    c('Plot and Excel appear unchanged','Click Prepare data again after changing the upload or preparation settings. Plot selectors update only the interactive comparison, not the workbook contents.'),
+    c('Cannot upload a large workbook','A default local Shiny installation may limit uploads to 5 MB unless configured otherwise. Remove unused workbook content or ask the app maintainer to configure an appropriate limit.')
+   ))),
+  p(class='guide-caption','Guide matched to the supplied DfaR English code. FA = fluctuating asymmetry; DA = directional asymmetry; ME = replicate measurement error; LEH = linear enamel hypoplasia. The app does not automatically apply general exclusions for wear, caries or damage.')
+ )
+}
+
+dfar_write_guide <- function(file) {
+ page <- tags$html(lang='en',tags$head(tags$meta(charset='utf-8'),
+   tags$meta(name='viewport',content='width=device-width, initial-scale=1'),
+   tags$title('DfaR - User guide'),dfar_help_css(),
+   tags$style(HTML('body{font-family:Arial,sans-serif;margin:24px auto;padding:0 20px;max-width:1080px;}'))),
+   tags$body(dfar_user_guide()))
+ # Expand the downloaded guide for reading and printing; app sections stay collapsible.
+ html <- as.character(page)
+ html <- gsub('<details>','<details open>',html,fixed=TRUE)
+ writeLines(enc2utf8(c('<!DOCTYPE html>',html)),file,useBytes=TRUE)
+}
+
 ui <- fluidPage(
+  dfar_help_css(),
 
   tags$head(
     tags$title("DfaR")
@@ -2259,6 +2401,10 @@ ui <- fluidPage(
 
     sidebarPanel(
 
+      actionLink("open_help", "How to use DfaR"),
+      br(), br(),
+      downloadButton("download_guide", "Download user guide"),
+      hr(),
       fileInput(
         "file",
         "1. Upload the original Excel file",
@@ -2267,7 +2413,7 @@ ui <- fluidPage(
 
       numericInput(
         "alpha",
-        "Alpha level for FA screening",
+        "Alpha for iterative outlier removal",
         value = 0.05,
         min = 0.001,
         max = 0.10,
@@ -2287,7 +2433,7 @@ ui <- fluidPage(
       ),
 
       helpText(
-        "In the current file, LEH_Present uses values of 1 and blank cells. This option makes the interpretation of blanks explicit."
+        "Enable only if your recording protocol supports missing-as-absence coding. See How to use for the exact tooth-type rule."
       ),
 
       actionButton(
@@ -2314,6 +2460,8 @@ ui <- fluidPage(
     mainPanel(
 
       tabsetPanel(
+        id = "main_tabs",
+        tabPanel("How to use", value = "how_to_use", dfar_user_guide()),
 
         # -------------------------------------------------------------------
         # SUMMARY
@@ -2349,6 +2497,7 @@ ui <- fluidPage(
         tabPanel(
           "FA: plots and tests",
           br(),
+          p(class = "dfar-context", "Choose a screened trait, response and comparison variable. Check the test label and sample in Data used in the test. Composite FA is below the trait analysis."),
 
           fluidRow(
             column(
@@ -2490,6 +2639,7 @@ ui <- fluidPage(
         tabPanel(
           "Tooth size",
           br(),
+          p(class = "dfar-context", "Indices are calculated by side, then averaged across available sides for each individual and tooth type. CrownIndex describes proportions. Check N_sides_size in the data table."),
 
           p(
             tags$b("Primary measure: "),
@@ -2575,6 +2725,7 @@ ui <- fluidPage(
         tabPanel(
           "LEH: plots and tests",
           br(),
+          p(class = "dfar-context", "Results use LEH_Present and LEH_Count in Tooth_Master. LEH_Bands is preserved but does not supply these summaries. Maximum count is not a sum across teeth."),
 
           fluidRow(
             column(
@@ -2680,6 +2831,15 @@ ui <- fluidPage(
 # ---------------------------------------------------------------------------
 
 server <- function(input, output, session) {
+  observeEvent(input$open_help, {
+    updateTabsetPanel(session, "main_tabs", selected = "how_to_use")
+  })
+  output$download_guide <- downloadHandler(
+    filename = function() "DfaR_user_guide.html",
+    content = function(file) dfar_write_guide(file),
+    contentType = "text/html; charset=utf-8"
+  )
+
 
   risultati <- reactiveVal(NULL)
 
@@ -2743,6 +2903,7 @@ server <- function(input, output, session) {
       )
 
       if (!is.null(risultati())) {
+        updateTabsetPanel(session, "main_tabs", selected = "Summary")
         showNotification(
           "Data prepared successfully.",
           type = "message",
